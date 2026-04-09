@@ -5,7 +5,8 @@
 /* set by next-themes (matches `<html data-theme="dark">`).             */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-:root {
+:root,
+[data-theme="light"] {
   --background: #e8e4dc;
   --foreground: #1d1d1f;
   --card: rgba(255, 255, 255, 0.85);

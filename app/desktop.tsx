@@ -621,7 +621,13 @@ function DesktopInner({ projects, initialIsMobile = false }: DesktopProps) {
 export function Desktop({ projects, initialIsMobile }: DesktopProps) {
   return (
     <I18nProvider>
-      <DesktopInner projects={projects} initialIsMobile={initialIsMobile} />
+      {/* Force light theme on the desktop variant — it has its own wallpaper
+          system and was never designed for the global dark theme. Without
+          this, a user whose OS is in dark mode would get dark CSS variables
+          (grid color, muted text, etc.) bleeding into the light desktop UI. */}
+      <div data-theme="light">
+        <DesktopInner projects={projects} initialIsMobile={initialIsMobile} />
+      </div>
     </I18nProvider>
   );
 }

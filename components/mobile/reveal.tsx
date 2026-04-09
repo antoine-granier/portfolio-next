@@ -50,7 +50,11 @@ export function Reveal({
           observer.disconnect();
         }
       },
-      { rootMargin: "0px 0px -60px 0px" },
+      // No rootMargin: a previous `-60px` bottom shrink was meant to delay
+      // the reveal, but it had a fatal side effect — any element pinned to
+      // the very bottom of the page (e.g. the footer copyright) sat inside
+      // the excluded strip and could never trigger.
+      { rootMargin: "0px" },
     );
     observer.observe(node);
     return () => observer.disconnect();

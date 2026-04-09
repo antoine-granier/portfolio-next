@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Enable Tailwind's `dark:` variant on top of the data-theme attribute */
+/* set by next-themes (matches `<html data-theme="dark">`).             */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
   --background: #e8e4dc;
   --foreground: #1d1d1f;
@@ -16,6 +20,27 @@
   --window-close: #ff5f57;
   --window-minimize: #ffbd2e;
   --window-maximize: #28c840;
+  /* Glass surfaces (used by mobile header, tech pills, etc.) */
+  --surface-glass: rgba(255, 255, 255, 0.6);
+  --surface-glass-soft: rgba(255, 255, 255, 0.4);
+  --surface-glass-border: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] {
+  --background: #0e0e12;
+  --foreground: #f4f4f6;
+  --card: rgba(28, 28, 32, 0.65);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-hover: rgba(40, 40, 44, 0.85);
+  --muted: #cdcdd5;
+  --accent: #0a84ff;
+  --menubar: rgba(20, 20, 22, 0.75);
+  --dock: rgba(50, 50, 60, 0.3);
+  --grid-color: rgba(255, 255, 255, 0.06);
+  --window-title: #2a2a2c;
+  --surface-glass: rgba(20, 20, 24, 0.55);
+  --surface-glass-soft: rgba(20, 20, 24, 0.35);
+  --surface-glass-border: rgba(255, 255, 255, 0.08);
 }
 
 @theme inline {
@@ -32,6 +57,9 @@
   --color-window-close: var(--window-close);
   --color-window-minimize: var(--window-minimize);
   --color-window-maximize: var(--window-maximize);
+  --color-surface-glass: var(--surface-glass);
+  --color-surface-glass-soft: var(--surface-glass-soft);
+  --color-surface-glass-border: var(--surface-glass-border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -40,6 +68,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), -apple-system, system-ui, sans-serif;
+  /* Smooth out the theme swap so background, text and surfaces fade
+     between light and dark instead of snapping. */
+  transition:
+    background-color 250ms ease,
+    color 250ms ease;
 }
 
 .grid-background {
@@ -51,6 +84,39 @@ body {
 
 .text-white .grid-background {
   --grid-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Project slider — scroll-driven card focus animation -------------- */
+/* Cards shrink and dim at the slider edges, peak at full size + full */
+/* opacity when centered. Pure CSS, GPU-accelerated, gated behind     */
+/* @supports so older browsers fall back to plain static cards.       */
+@keyframes slider-card-focus {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .slider-card {
+    animation: slider-card-focus linear both;
+    animation-timeline: view(inline);
+    animation-range: cover 0% cover 100%;
+    transform-origin: center center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slider-card {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
 }
 
 /* Reveal system ----------------------------------------------------- */
@@ -158,6 +224,12 @@ body {
   opacity: 0.22;
   z-index: 1;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Invert the noise SVG in dark mode so it becomes light grain on dark bg */
+[data-theme="dark"] .noise-background::after {
+  filter: invert(1);
+  opacity: 0.18;
 }
 
 /* Accessibility: reduce motion */

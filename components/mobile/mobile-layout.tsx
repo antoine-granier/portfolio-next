@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useI18n } from "@/lib/i18n";
 import { Reveal } from "./reveal";
+import { ThemeToggle } from "./theme-toggle";
 
 // Lazy-load the bottom sheets so framer-motion + sheet code stays out of the
 // initial mobile bundle. They're only needed when the user opens a project or
@@ -90,7 +91,7 @@ function MarqueeRow({
 
 function TechPill({ name, color }: { name: string; color: string }) {
   return (
-    <div className="flex shrink-0 items-center gap-2 rounded-full border border-card-border bg-white/60 px-4 py-2">
+    <div className="flex shrink-0 items-center gap-2 rounded-full border border-card-border bg-surface-glass px-4 py-2">
       <span
         className="h-2 w-2 shrink-0 rounded-full"
         style={{ backgroundColor: color }}
@@ -111,6 +112,55 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
 
   const onOpenContact = () => setMailOpen(true);
 
+  // ── Project slider state ────────────────────────────────────────────────
+  // sliderRef     : the scrollable track, used as IntersectionObserver root
+  // activeProject : index of the card currently centered, drives the dots
+  // (Side fade is done with `mask-image` on the scroll container — pure CSS,
+  // no scroll listener needed.)
+  const sliderRef = useRef<HTMLDivElement>(null);
+  const [activeProject, setActiveProject] = useState(0);
+
+  useEffect(() => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+
+    // Observe each card and update activeProject when one enters the central
+    // strip of the slider. rootMargin shrinks the root horizontally so only
+    // the central ~10% counts as "active".
+    const cards = slider.querySelectorAll<HTMLElement>("[data-card-index]");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const idx = Number(entry.target.getAttribute("data-card-index"));
+            setActiveProject(idx);
+          }
+        }
+      },
+      {
+        root: slider,
+        rootMargin: "0px -45% 0px -45%",
+        threshold: 0,
+      },
+    );
+    cards.forEach((card) => observer.observe(card));
+
+    return () => observer.disconnect();
+  }, [projects.length]);
+
+  const scrollToProject = (idx: number) => {
+    const slider = sliderRef.current;
+    if (!slider) return;
+    const card = slider.querySelector<HTMLElement>(
+      `[data-card-index="${idx}"]`,
+    );
+    card?.scrollIntoView({
+      behavior: "smooth",
+      inline: "start",
+      block: "nearest",
+    });
+  };
+
   return (
     <div className="noise-background relative min-h-screen pt-12 pb-8">
       {/* Ambient color halos - fixed viewport layer */}
@@ -129,7 +179,7 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
         {/* Background layer with blur (isolated from content) */}
         <div
           aria-hidden="true"
-          className="absolute inset-0 border-b border-black/5 bg-white/60 backdrop-blur-xl"
+          className="absolute inset-0 border-b border-surface-glass-border bg-surface-glass backdrop-blur-xl"
         />
         {/* Content layer (sharp, not affected by backdrop-filter) */}
         <div className="relative flex h-full items-center justify-between px-4">
@@ -144,29 +194,32 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
             />
             <span className="text-sm font-semibold">{t("menu.portfolio")}</span>
           </div>
-          <button
-            onClick={toggle}
-            className="flex items-center gap-1 rounded px-2 py-1 text-[12px] transition-colors hover:bg-black/5"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="opacity-70"
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <button
+              onClick={toggle}
+              className="flex items-center gap-1 rounded px-2 py-1 text-[12px] transition-colors hover:bg-foreground/5"
             >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M2 12h20" />
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-            </svg>
-            <span className="font-semibold">
-              {locale === "fr" ? "FR" : "EN"}
-            </span>
-          </button>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="opacity-70"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M2 12h20" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+              <span className="font-semibold">
+                {locale === "fr" ? "FR" : "EN"}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -208,9 +261,9 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
 
           {/* Availability badge */}
           <Reveal delay={1} className="mt-5 flex justify-center">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 px-3 py-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-              <span className="text-[11px] font-medium text-green-700">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-green-500/25 bg-green-500/15 px-3 py-1 dark:border-green-400/30 dark:bg-green-400/15">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400" />
+              <span className="text-[11px] font-semibold text-green-700 dark:text-green-300">
                 {locale === "fr"
                   ? "Ouvert à toute opportunité"
                   : "Open to any opportunity"}
@@ -338,7 +391,7 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
           <TechMarquee />
         </Reveal>
 
-        {/* Projects - full-width cards */}
+        {/* Projects - horizontal slider with native scroll-snap */}
         <section className="mb-8">
           <Reveal className="mb-3 flex items-baseline justify-between">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted">
@@ -356,27 +409,40 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
             </span>
           </Reveal>
 
-          <div className="flex flex-col gap-4">
-            {projects.map((project, i) => (
-              <Reveal
-                key={project.slug}
-                delay={Math.min(i, 5) as 0 | 1 | 2 | 3 | 4 | 5}
+          <Reveal>
+            <div className="-mx-4">
+              <div
+                ref={sliderRef}
+                className="overflow-x-auto snap-x snap-mandatory scroll-px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                style={{
+                  // Fade the cards themselves to transparent at the edges
+                  // (iOS App Store style). No coloured overlay, no JS — the
+                  // real background simply shows through.
+                  maskImage:
+                    "linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)",
+                  WebkitMaskImage:
+                    "linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%)",
+                }}
               >
-                <button
-                  onClick={() => setSelectedProject(project)}
-                  className="group relative w-full overflow-hidden rounded-3xl border border-card-border bg-card/50 text-left backdrop-blur-xl active:scale-[0.98]"
-                >
-                  {/* Project image */}
-                  {project.image && (
-                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-[#007aff]/5 to-[#af52de]/5">
-                      <Image
-                        src={project.image}
-                        alt={project.title}
-                        fill
-                        sizes="(max-width: 640px) calc(100vw - 32px), 480px"
-                        className="object-cover"
-                        draggable={false}
-                      />
+                <div className="flex gap-4 px-4 pb-1">
+                  {projects.map((project, i) => (
+                    <button
+                      key={project.slug}
+                      data-card-index={i}
+                      onClick={() => setSelectedProject(project)}
+                      className="slider-card group relative shrink-0 w-[85vw] max-w-sm snap-start overflow-hidden rounded-3xl border border-card-border bg-card/50 text-left backdrop-blur-xl"
+                    >
+                    {/* Project image */}
+                    {project.image && (
+                      <div className="relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-[#007aff]/5 to-[#af52de]/5">
+                        <Image
+                          src={project.image}
+                          alt={project.title}
+                          fill
+                          sizes="(max-width: 640px) 85vw, 384px"
+                          className="object-cover"
+                          draggable={false}
+                        />
                       {/* Gradient overlay bottom */}
                       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
                       {/* Title on image */}
@@ -412,13 +478,13 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
                       {project.tech.slice(0, 4).map((tech) => (
                         <span
                           key={tech}
-                          className="rounded-full bg-[#0071e3]/10 px-2 py-0.5 text-[10px] font-medium text-[#0071e3]"
+                          className="rounded-full border border-surface-glass-border bg-surface-glass px-2 py-0.5 text-[10px] font-medium text-foreground backdrop-blur-sm"
                         >
                           {tech}
                         </span>
                       ))}
                       {project.tech.length > 4 && (
-                        <span className="rounded-full bg-black/5 px-2 py-0.5 text-[10px] font-medium text-muted">
+                        <span className="rounded-full border border-surface-glass-border bg-surface-glass-soft px-2 py-0.5 text-[10px] font-medium text-muted backdrop-blur-sm">
                           +{project.tech.length - 4}
                         </span>
                       )}
@@ -442,11 +508,34 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
                         <polyline points="12 5 19 12 12 19" />
                       </svg>
                     </div>
-                  </div>
-                </button>
-              </Reveal>
-            ))}
-          </div>
+                    </div>
+                  </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Dots indicator — clickable, reflects active card */}
+            <div className="mt-4 flex justify-center gap-1.5">
+              {projects.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => scrollToProject(i)}
+                  aria-label={
+                    locale === "fr"
+                      ? `Aller au projet ${i + 1}`
+                      : `Go to project ${i + 1}`
+                  }
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    i === activeProject
+                      ? "w-6 bg-foreground"
+                      : "w-1.5 bg-foreground/25"
+                  }`}
+                />
+              ))}
+            </div>
+          </Reveal>
         </section>
 
         {/* Contact & Socials - CTA card */}
@@ -456,12 +545,12 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
             <div className="pointer-events-none absolute -top-10 -right-10 h-32 w-32 rounded-full bg-gradient-to-br from-[#007aff]/30 to-[#af52de]/30 blur-3xl" />
 
             <div className="relative">
-              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-1">
+              <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-green-500/25 bg-green-500/15 px-2.5 py-1 dark:border-green-400/30 dark:bg-green-400/15">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75 dark:bg-green-400" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500 dark:bg-green-400" />
                 </span>
-                <span className="text-[10px] font-medium text-green-700">
+                <span className="text-[10px] font-semibold text-green-700 dark:text-green-300">
                   {locale === "fr" ? "Réponse sous 24h" : "Reply within 24h"}
                 </span>
               </div>

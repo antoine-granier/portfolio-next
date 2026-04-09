@@ -109,6 +109,15 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
     null,
   );
   const [mailOpen, setMailOpen] = useState(false);
+  // Once a sheet has been opened we keep MobileSheetsManager mounted forever.
+  // Otherwise React would unmount it the instant the user closes a sheet,
+  // and the inner <AnimatePresence> would have no chance to play its slide-
+  // down exit animation — the sheet would just vanish in one frame.
+  const [sheetsEverOpened, setSheetsEverOpened] = useState(false);
+
+  useEffect(() => {
+    if (selectedProject || mailOpen) setSheetsEverOpened(true);
+  }, [selectedProject, mailOpen]);
 
   const onOpenContact = () => setMailOpen(true);
 
@@ -650,8 +659,10 @@ export function MobileLayout({ projects }: MobileLayoutProps) {
         </Reveal>
       </div>
 
-      {/* iOS bottom sheets — lazy-loaded chunk (framer-motion isolated here) */}
-      {(selectedProject || mailOpen) && (
+      {/* iOS bottom sheets — lazy-loaded chunk (framer-motion isolated here).
+          Stays mounted after the first open so AnimatePresence can play its
+          slide-down exit animation when sheets close. */}
+      {sheetsEverOpened && (
         <MobileSheetsManager
           selectedProject={selectedProject}
           mailOpen={mailOpen}
